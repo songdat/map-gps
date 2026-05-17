@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+
+<meta charset="UTF-8">
+
+<meta name="viewport"
+content="width=device-width, initial-scale=1.0">
+
+<title>Student GPS Map</title>
+
+<link rel="stylesheet"
+href="https://unpkg.com/leaflet/dist/leaflet.css"/>
+
+<style>
+
+body {
+
+  font-family: Arial;
+  margin: 0;
+  padding: 0;
+  background: #f2f2f2;
+
+}
+
+#topPanel {
+
+  padding: 15px;
+  text-align: center;
+  background: white;
+
+}
+
+input {
+
+  width: 90%;
+  max-width: 400px;
+
+  padding: 12px;
+
+  font-size: 18px;
+
+}
+
+button {
+
+  margin-top: 10px;
+
+  padding: 12px 25px;
+
+  font-size: 18px;
+
+  cursor: pointer;
+
+}
+
+#status {
+
+  margin-top: 10px;
+  color: green;
+
+}
+
+#map {
+
+  width: 100%;
+  height: 80vh;
+
+}
+
+</style>
+
+</head>
+
+<body>
+
+<div id="topPanel">
+
+<h2>
+
+กรอกชื่อ-สกุล ชื่อเล่น ระดับชั้น
+
+</h2>
+
+<input type="text"
+id="studentName"
+placeholder="เช่น นายสุขใจ ใจบุญ บิ๊ก 1/2">
+
+<br>
+
+<button onclick="sendLocation()">
+
+ส่งตำแหน่ง GPS
+
+</button>
+
+<p id="status"></p>
+
+</div>
+
+<div id="map"></div>
+
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+
+<script>
+
+// ===== MAP =====
+const map = L.map('map').setView(
+  [17.4138, 102.7870],
+  13
+);
+
+L.tileLayer(
+  'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+  {
+    attribution: 'OpenStreetMap'
+  }
+).addTo(map);
+
+let markers = [];
+
+// ===== SEND GPS =====
+async function sendLocation() {
+
+  const name =
+    document.getElementById("studentName").value;
+
+  if(name === "") {
+
+    alert("กรุณากรอกชื่อ");
+
+    return;
+  }
+
+  if(!navigator.geolocation) {
+
+    alert("อุปกรณ์ไม่รองรับ GPS");
+
+    return;
+  }
+
+  document.getElementById("status")
+    .innerText = "กำลังรับตำแหน่ง...";
+
+  navigator.geolocation.getCurrentPosition(
+
+    async function(position) {
+
+      const data = {
+
+        name: name,
+
+        latitude:
+          position.coords.latitude,
+
+        longitude:
+          position.coords.longitude
+
+      };
+
+      try {
+
+        await fetch(
+          "https://script.google.com/macros/s/AKfycbzOalfKhjryn8U9zWc-XCSzJvI8nRGy-27y2TjqHEjMqKTye7s1Cj3x-hL3q31ZVpHc/exec",
+          {
+
+            method: "POST",
+
+            headers: {
+              "Content-Type":
+              "application/json"
+            },
+
+            body: JSON.stringify(data)
+
+          }
+        );
+
+        document.getElementById("status")
+          .innerText =
+          "ส่งข้อมูลเรียบร้อย";
+
+        loadLocations();
+
+      }
+
+      catch(error) {
+
+        document.getElementById("status")
+          .innerText =
+          "เกิดข้อผิดพลาด";
+
+      }
+
+    },
+
+    function(error) {
+
+      document.getElementById("status")
+        .innerText =
+        "ไม่สามารถรับ GPS";
+
+    }
+
+  );
+
+}
+
+
+
+// ===== LOAD MARKERS =====
+async function loadLocations() {
+
+  try {
+
+    const response =
+      await fetch(
+        "https://script.google.com/macros/s/AKfycbzOalfKhjryn8U9zWc-XCSzJvI8nRGy-27y2TjqHEjMqKTye7s1Cj3x-hL3q31ZVpHc/exec"
+      );
+
+    const data =
+      await response.json();
+
+    // ===== REMOVE OLD MARKERS =====
+    markers.forEach(marker => {
+
+      map.removeLayer(marker);
+
+    });
+
+    markers = [];
+
+    // ===== ADD NEW MARKERS =====
+    data.forEach(item => {
+
+      const marker = L.marker([
+
+        Number(item.latitude),
+        Number(item.longitude)
+
+      ])
+
+      .addTo(map)
+
+      .bindPopup(
+
+        "<b>" + item.name + "</b><br>" +
+
+        item.latitude + ", " +
+
+        item.longitude
+
+      );
+
+      markers.push(marker);
+
+    });
+
+  }
+
+  catch(error) {
+
+    console.log(error);
+
+  }
+
+}
+
+
+
+// ===== FIRST LOAD =====
+loadLocations();
+
+// ===== AUTO REFRESH =====
+setInterval(loadLocations, 5000);
+
+</script>
+
+</body>
+
+</html>
