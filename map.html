@@ -8,55 +8,24 @@
 <meta name="viewport"
 content="width=device-width, initial-scale=1.0">
 
-<title>Student GPS Sender</title>
+<title>Realtime Student Map</title>
+
+<link rel="stylesheet"
+href="https://unpkg.com/leaflet/dist/leaflet.css"/>
 
 <style>
 
-body {
+html, body {
 
-  font-family: Arial;
-  text-align: center;
-  background: #f2f2f2;
-  padding: 30px;
+  height: 100%;
+  margin: 0;
 
 }
 
-h2 {
+#map {
 
-  color: #333;
-
-}
-
-input {
-
-  width: 90%;
-  max-width: 400px;
-
-  padding: 12px;
-
-  font-size: 18px;
-
-}
-
-button {
-
-  margin-top: 15px;
-
-  padding: 12px 25px;
-
-  font-size: 18px;
-
-  cursor: pointer;
-
-}
-
-#status {
-
-  margin-top: 20px;
-
-  font-size: 18px;
-
-  color: green;
+  width: 100%;
+  height: 100%;
 
 }
 
@@ -66,117 +35,101 @@ button {
 
 <body>
 
-<h2>
+<div id="map"></div>
 
-กรอกชื่อ-สกุล ชื่อเล่น ระดับชั้น
-
-</h2>
-
-<input
-type="text"
-id="studentName"
-placeholder="เช่น นายสุขใจ ใจบุญ บิ๊ก 1/2">
-
-<br>
-
-<button onclick="sendLocation()">
-
-ส่งตำแหน่ง GPS
-
-</button>
-
-<p id="status"></p>
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
 
 <script>
 
-async function sendLocation() {
+// ===== CREATE MAP =====
+const map = L.map('map').setView(
+  [17.4138, 102.7870],
+  13
+);
 
-  const name =
-    document.getElementById("studentName").value;
-
-  if(name === "") {
-
-    alert("กรุณากรอกชื่อ");
-
-    return;
+// ===== MAP TILE =====
+L.tileLayer(
+  'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+  {
+    attribution: 'OpenStreetMap'
   }
+).addTo(map);
 
-  if(!navigator.geolocation) {
+let markers = [];
 
-    alert("อุปกรณ์ไม่รองรับ GPS");
+// ===== LOAD DATA =====
+async function loadLocations() {
 
-    return;
-  }
+  try {
 
-  document.getElementById("status")
-    .innerText =
-    "กำลังรับตำแหน่ง...";
+    const response =
+      await fetch(
 
-  navigator.geolocation.getCurrentPosition(
+        "https://script.google.com/macros/s/AKfycbzOalfKhjryn8U9zWc-XCSzJvI8nRGy-27y2TjqHEjMqKTye7s1Cj3x-hL3q31ZVpHc/exec"
 
-    async function(position) {
+      );
 
-      const data = {
+    const data =
+      await response.json();
 
-        name: name,
+    // ===== REMOVE OLD MARKERS =====
+    markers.forEach(marker => {
 
-        latitude:
-          position.coords.latitude,
+      map.removeLayer(marker);
 
-        longitude:
-          position.coords.longitude
+    });
 
-      };
+    markers = [];
 
-      try {
+    // ===== ADD NEW MARKERS =====
+    data.forEach(item => {
 
-        await fetch(
+      if(
+        item.latitude &&
+        item.longitude
+      ) {
 
-          "https://script.google.com/macros/s/AKfycbzOalfKhjryn8U9zWc-XCSzJvI8nRGy-27y2TjqHEjMqKTye7s1Cj3x-hL3q31ZVpHc/exec",
+        const marker = L.marker([
 
-          {
+          Number(item.latitude),
 
-            method: "POST",
+          Number(item.longitude)
 
-            headers: {
-              "Content-Type":
-              "application/json"
-            },
+        ])
 
-            body:
-              JSON.stringify(data)
+        .addTo(map)
 
-          }
+        .bindPopup(
+
+          "<b>" + item.name + "</b><br>" +
+
+          item.latitude + ", " +
+
+          item.longitude
 
         );
 
-        document.getElementById("status")
-          .innerText =
-          "ส่งข้อมูลเรียบร้อย";
+        markers.push(marker);
 
       }
 
-      catch(error) {
+    });
 
-        document.getElementById("status")
-          .innerText =
-          "เกิดข้อผิดพลาด";
+  }
 
-      }
+  catch(error) {
 
-    },
+    console.log(error);
 
-    function(error) {
-
-      document.getElementById("status")
-        .innerText =
-        "ไม่สามารถรับ GPS";
-
-    }
-
-  );
+  }
 
 }
+
+// ===== FIRST LOAD =====
+loadLocations();
+
+// ===== AUTO REFRESH =====
+setInterval(loadLocations, 5000);
 
 </script>
 
