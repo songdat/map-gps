@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+
+<meta charset="UTF-8">
+
+<meta name="viewport"
+content="width=device-width, initial-scale=1.0">
+
+<title>Realtime Student Map</title>
+
+<link rel="stylesheet"
+href="https://unpkg.com/leaflet/dist/leaflet.css"/>
+
+<style>
+
+html, body {
+
+  height: 100%;
+  margin: 0;
+
+}
+
+#map {
+
+  width: 100%;
+  height: 100%;
+
+}
+
+</style>
+
+</head>
+
+<body>
+
+<div id="map"></div>
+
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+
+<script>
+
+// ===== CREATE MAP =====
+const map = L.map('map').setView(
+  [17.4138, 102.7870],
+  13
+);
+
+// ===== MAP TILE =====
+L.tileLayer(
+  'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+  {
+    attribution: 'OpenStreetMap'
+  }
+).addTo(map);
+
+let markers = [];
+
+// ===== LOAD DATA =====
+async function loadLocations() {
+
+  try {
+
+    const response =
+      await fetch(
+
+        "https://script.google.com/macros/s/AKfycbzOalfKhjryn8U9zWc-XCSzJvI8nRGy-27y2TjqHEjMqKTye7s1Cj3x-hL3q31ZVpHc/exec"
+
+      );
+
+    const data =
+      await response.json();
+
+    // ===== REMOVE OLD MARKERS =====
+    markers.forEach(marker => {
+
+      map.removeLayer(marker);
+
+    });
+
+    markers = [];
+
+    // ===== ADD NEW MARKERS =====
+    data.forEach(item => {
+
+      if(
+        item.latitude &&
+        item.longitude
+      ) {
+
+        const marker = L.marker([
+
+          Number(item.latitude),
+
+          Number(item.longitude)
+
+        ])
+
+        .addTo(map)
+
+        .bindPopup(
+
+          "<b>" + item.name + "</b><br>" +
+
+          item.latitude + ", " +
+
+          item.longitude
+
+        );
+
+        markers.push(marker);
+
+      }
+
+    });
+
+  }
+
+  catch(error) {
+
+    console.log(error);
+
+  }
+
+}
+
+// ===== FIRST LOAD =====
+loadLocations();
+
+// ===== AUTO REFRESH =====
+setInterval(loadLocations, 5000);
+
+</script>
+
+</body>
+
+</html>
